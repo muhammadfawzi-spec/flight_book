@@ -7098,7 +7098,8 @@ struct InstructorSigningView: View {
                     VStack(alignment: .leading, spacing: 7) {
                         Text(flight.shortDate + " · " + flight.registration + " · " + flight.aircraftModel).font(.headline)
                         Text(flight.route)
-                        Text("Total " + hours(flight.total) + " h · Dual " + hours(flight.dual) + " h · PIC " + hours(flight.pic) + " h")
+                        let hoursSummary = "Total " + hours(flight.total) + " h · Dual " + hours(flight.dual) + " h · PIC " + hours(flight.pic) + " h"
+                        Text(hoursSummary)
                         DisclosureGroup("Review all recorded times and comments") {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Cross-country \(hours(flight.crossCountry)) · Night \(hours(flight.night)) · IMC \(hours(flight.imc)) · Simulated instrument \(hours(flight.simulatedInstrument)) · Instructor \(hours(flight.instructor)) h")

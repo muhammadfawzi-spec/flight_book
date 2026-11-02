@@ -1,0 +1,22 @@
+# Xcode
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager (when packages are added in Phase 2)
+.swiftpm/
+.build/
+Packages/
+Package.resolved
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
