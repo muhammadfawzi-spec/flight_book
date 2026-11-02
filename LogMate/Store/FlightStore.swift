@@ -1,22 +1,12 @@
-// Update ID: IMPORT-COMPLETION-REGISTRY-2026-10-14
-import SwiftUI
+// The app's single shared state object: loads, validates, saves and deletes
+// flights, aircraft, schedules, instructors and the medical record; owns the
+// stats model, the save/backup logic, and the prototype testing-reset.
 import Foundation
-import PhotosUI
-import Photos
-import UniformTypeIdentifiers
-import UIKit
 import Combine
-import MapKit
-import Vision
-import UserNotifications
-import ImageIO
-import PencilKit
-import CryptoKit
-import CoreImage
-import Security
-import VisionKit
-import AVFoundation
+import UIKit
 
+// App history notes from the original single-file build (kept verbatim):
+// Update ID: IMPORT-COMPLETION-REGISTRY-2026-10-14
 // Replace ContentView.swift only. Keep your existing @main app file.
 // iOS 17 or later. Existing savedFlights and FlightPhotos are retained.
 // October 14 build: registry aircraft resolution, preserved import features, completion reports and date/registration-only required fields.
