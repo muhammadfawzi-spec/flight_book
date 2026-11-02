@@ -470,6 +470,8 @@ struct AIPhotoResult: Decodable {
     }
 }
 
+        // MARK: - Whole-image AI imports
+        // Only this private import-service access code is stored on the device. The OpenAI key stays on the server.
 @MainActor struct AIImportSettings: View {
     @EnvironmentObject var theme: AppTheme
     @Environment(\.dismiss) var dismiss
