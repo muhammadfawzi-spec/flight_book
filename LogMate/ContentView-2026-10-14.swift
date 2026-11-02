@@ -25,82 +25,6 @@ import AVFoundation
 // Configure AI image imports in More. The AI provider key must remain on the server.
 // Existing galleries, medical tracking, stories, signatures, milestones and exports are retained.
 
-enum AppBrand {
-    static let name = "LogMate"
-}
-
-enum PrototypeTesting {
-    // Testing only. Change to false before shipping the final product.
-    static let enablesFlightReset = true
-}
-
-// The outlined airplane from the supplied LogMate logo, without the icon background.
-// The same vector is used by SwiftUI and the exported story image.
-struct LogMateLogo: Shape {
-    nonisolated func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: 22, y: 94))
-        path.addLine(to: CGPoint(x: 86, y: 150))
-        path.addLine(to: CGPoint(x: 22, y: 206))
-        path.closeSubpath()
-        path.move(to: CGPoint(x: 22, y: 150))
-        path.addLine(to: CGPoint(x: 338, y: 150))
-        path.move(to: CGPoint(x: 194, y: 150))
-        path.addLine(to: CGPoint(x: 134, y: 18))
-        path.addLine(to: CGPoint(x: 182, y: 18))
-        path.addLine(to: CGPoint(x: 246, y: 150))
-        path.move(to: CGPoint(x: 194, y: 150))
-        path.addLine(to: CGPoint(x: 126, y: 282))
-        path.addLine(to: CGPoint(x: 182, y: 282))
-        path.addLine(to: CGPoint(x: 246, y: 150))
-        path.move(to: CGPoint(x: 300, y: 114))
-        path.addLine(to: CGPoint(x: 338, y: 150))
-        path.addLine(to: CGPoint(x: 300, y: 187))
-        let scale = min(rect.width / 360, rect.height / 300)
-        return path.applying(CGAffineTransform(a: scale, b: 0, c: 0, d: scale,
-            tx: rect.midX - 180 * scale, ty: rect.midY - 150 * scale))
-    }
-}
-
-private func hours(_ value: Double) -> String { String(format: "%.1f", value) }
-private func editableHours(_ value: Double) -> String {
-    abs(value * 10 - (value * 10).rounded()) < 0.0000001 ? hours(value) : String(value)
-}
-// Empty controls show their placeholder; optional empty fields save as zero.
-private func entryHours(_ value: Double) -> String { value == 0 ? "" : editableHours(value) }
-private func entryCount(_ value: Int) -> String { value == 0 ? "" : String(value) }
-
-private func number(_ text: String) -> Double {
-    Double(text.trimmingCharacters(in: .whitespacesAndNewlines)
-        .replacingOccurrences(of: ",", with: ".").split(separator: " ").first.map(String.init) ?? "") ?? 0
-}
-
-nonisolated enum FlightDates {
-    static func formats(for text: String) -> [String] {
-        // A two-digit year must be parsed as yy, not AD 26 through yyyy.
-        if text.range(of: #"^\s*[0-9]{1,2}/[0-9]{1,2}/[0-9]{2}\s*$"#, options: .regularExpression) != nil { return ["M/d/yy"] }
-        if text.range(of: #"^\s*[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}\s*$"#, options: .regularExpression) != nil { return ["M/d/yyyy"] }
-        if text.range(of: #"^\s*[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}\s*$"#, options: .regularExpression) != nil { return ["yyyy-MM-dd"] }
-        return ["MMM d, yyyy", "MMMM d, yyyy"]
-    }
-    static func parse(_ text: String) -> Date? {
-        for format in formats(for: text) {
-            let f = DateFormatter()
-            f.locale = Locale(identifier: "en_US_POSIX")
-            f.dateFormat = format
-            f.isLenient = false
-            if let date = f.date(from: text) { return date }
-        }
-        return nil
-    }
-    static func string(_ date: Date, format: String = "yyyy-MM-dd") -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = format
-        return f.string(from: date)
-    }
-}
-
 nonisolated enum AirportRoute {
     // Published IATA / FAA local aliases from OurAirports (public-domain dataset).
     // An ambiguous alias is intentionally left unchanged; Alaska/Hawaii/foreign ICAO codes retain their prefixes.
@@ -1395,205 +1319,6 @@ enum PhotoStore {
         let data = try PropertyListEncoder().encode(images.compactMap { $0.jpegData(compressionQuality: 0.82) })
         try data.write(to: folder.appendingPathComponent(safe(key) + ".plist"), options: .atomic)
     }
-}
-
-@MainActor final class AppTheme: ObservableObject {
-    @Published var dark = (UserDefaults.standard.object(forKey: "isDarkMode") as? Bool) ?? true
-    private var changing = false
-    var background: Color { Color(hex: dark ? 0x080B0E : 0xEEF1F3) }
-    var surface: Color { Color(hex: dark ? 0x12181D : 0xFFFFFF) }
-    var raised: Color { Color(hex: dark ? 0x182127 : 0xF4F6F7) }
-    var line: Color { Color(hex: dark ? 0x283138 : 0xDDE3E7) }
-    var text: Color { Color(hex: dark ? 0xF5F7F8 : 0x0E1B2C) }
-    var muted: Color { Color(hex: dark ? 0x8D969D : 0x66727E) }
-    var accent: Color { Color(hex: dark ? 0xFFC548 : 0xEF9B00) }
-    var cyan: Color { Color(hex: dark ? 0x19D7EE : 0x08A7C0) }
-    func toggle() {
-        guard !changing else { return }
-        let window = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-            .first(where: { $0.activationState == .foregroundActive })?.windows.first(where: \.isKeyWindow)
-        let snapshot = window?.snapshotView(afterScreenUpdates: false)
-        if let window, let snapshot {
-            snapshot.frame = window.bounds
-            snapshot.isUserInteractionEnabled = false
-            snapshot.accessibilityElementsHidden = true
-            window.addSubview(snapshot)
-            changing = true
-        }
-        dark.toggle()
-        UserDefaults.standard.set(dark, forKey: "isDarkMode")
-        guard let snapshot else { return }
-        UIView.animate(withDuration: 0.85, delay: 0.08, options: [.curveEaseInOut]) {
-            snapshot.alpha = 0
-        } completion: { _ in
-            snapshot.removeFromSuperview(); self.changing = false
-        }
-    }
-}
-
-extension Color {
-    init(hex: UInt32) {
-        self.init(.sRGB, red: Double((hex >> 16) & 255) / 255,
-                  green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255, opacity: 1)
-    }
-}
-
-enum CardTone { case neutral, blue, green, airport }
-
-struct CardStyle: ViewModifier {
-    @EnvironmentObject var theme: AppTheme
-    var padding: CGFloat = 18
-    var tone: CardTone = .neutral
-    private var colors: [Color] {
-        switch tone {
-        case .neutral: return theme.dark ? [Color(hex: 0x17252C), Color(hex: 0x121A1F), Color(hex: 0x0E151A)] : [.white, Color(hex: 0xF1F5F6)]
-        case .blue: return theme.dark ? [Color(hex: 0x243D49), Color(hex: 0x14222A), Color(hex: 0x0E171C)] : [Color(hex: 0xFAFDFF), Color(hex: 0xE5F1F4)]
-        case .green: return theme.dark ? [Color(hex: 0x2A342F), Color(hex: 0x17211F), Color(hex: 0x111817)] : [Color(hex: 0xFBFDF8), Color(hex: 0xEDF3E9)]
-        case .airport: return theme.dark ? [Color(hex: 0x172932), Color(hex: 0x10171C)] : [.white, Color(hex: 0xEEF5F7)]
-        }
-    }
-    func body(content: Content) -> some View {
-        content.padding(padding).frame(maxWidth: .infinity, alignment: .leading)
-            .background(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-            .clipShape(RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22).stroke(LinearGradient(colors: [Color.white.opacity(theme.dark ? 0.075 : 0.9), theme.line.opacity(0.1)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
-            .shadow(color: (theme.dark ? Color.black : Color(hex: 0x273F4B)).opacity(theme.dark ? 0.16 : 0.11), radius: 12, x: 0, y: 8)
-    }
-}
-
-extension View {
-    func logbookCard(_ padding: CGFloat = 18, tone: CardTone = .neutral) -> some View { modifier(CardStyle(padding: padding, tone: tone)) }
-}
-
-struct AccentButtonLabel: View {
-    @EnvironmentObject var theme: AppTheme
-    var title: String
-    var body: some View {
-        Text(title).font(.system(size: 17, weight: .bold, design: .rounded))
-            .foregroundStyle(Color(hex: 0x15202A)).frame(maxWidth: .infinity)
-            .padding(.vertical, 16).background(theme.accent).clipShape(Capsule())
-    }
-}
-
-struct AccentButton: View {
-    var title: String
-    var action: () -> Void
-    var body: some View {
-        Button(action: action) {
-            AccentButtonLabel(title: title)
-        }.buttonStyle(.plain)
-    }
-}
-
-struct SectionHeading: View {
-    var title: String
-    var body: some View { Text(title).font(.system(size: 23, weight: .bold, design: .rounded)) }
-}
-
-struct SheetFrame<Content: View>: View {
-    @EnvironmentObject var theme: AppTheme
-    @Environment(\.dismiss) var dismiss
-    let title: String
-    let subtitle: String?
-    let content: Content
-    let scrollTarget: ScanScrollTarget?
-    let onClose: (() -> Void)?
-    @State private var keyboardVisible = false
-    init(title: String, subtitle: String? = nil, scrollTarget: ScanScrollTarget? = nil, onClose: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.subtitle = subtitle
-        self.content = content()
-        self.scrollTarget = scrollTarget
-        self.onClose = onClose
-    }
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title).font(.system(size: 27, weight: .bold, design: .rounded))
-                    if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(theme.muted) }
-                }
-                Spacer()
-                Button { if let onClose { onClose() } else { dismiss() } } label: {
-                    Image(systemName: "xmark").font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(theme.muted).frame(width: 42, height: 42)
-                        .background(theme.raised).clipShape(Circle())
-                }.accessibilityLabel("Close")
-            }.padding(20)
-            Divider().overlay(theme.line)
-            ScrollViewReader { proxy in
-                ScrollView { content.padding(20) }
-                    .scrollDismissesKeyboard(.never)
-                    .onChange(of: scrollTarget) { _, target in
-                        guard let target else { return }
-                        withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo("scan-" + target.field, anchor: .center) }
-                    }
-            }
-        }.background(theme.background).foregroundStyle(theme.text)
-            .background(KeyboardDismissSupport())
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if keyboardVisible {
-                    HStack {
-                        Spacer()
-                        Button { KeyboardDismissSupport.dismiss() } label: {
-                            Label("Done", systemImage: "keyboard.chevron.compact.down")
-                                .font(.subheadline.bold()).foregroundStyle(theme.cyan)
-                                .padding(.horizontal, 14).padding(.vertical, 9)
-                                .background(theme.raised).clipShape(Capsule())
-                                .overlay(Capsule().stroke(theme.line, lineWidth: 1))
-                        }.accessibilityLabel("Dismiss keyboard")
-                    }.padding(.horizontal, 20).padding(.vertical, 8)
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardVisible = true }
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardVisible = false }
-            .preferredColorScheme(theme.dark ? .dark : .light)
-            .presentationDragIndicator(.visible)
-    }
-}
-
-// A tap recognizer does not compete with a drag/scroll and never cancels controls.
-// Number/decimal pads have a compact app-styled Done control in SheetFrame.
-struct KeyboardDismissSupport: UIViewRepresentable {
-    static func dismiss() { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }
-    final class Anchor: UIView {
-        var attach: ((UIWindow?) -> Void)?
-        override func didMoveToWindow() { super.didMoveToWindow(); attach?(window) }
-    }
-    @MainActor final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        weak var window: UIWindow?
-        var tap: UITapGestureRecognizer?
-        func attach(_ next: UIWindow?) {
-            guard window !== next else { return }
-            if let tap { window?.removeGestureRecognizer(tap) }
-            window = next
-            guard let next else { tap = nil; return }
-            let recognizer = UITapGestureRecognizer(target: self, action: #selector(tapped))
-            recognizer.cancelsTouchesInView = false; recognizer.delegate = self
-            next.addGestureRecognizer(recognizer); tap = recognizer
-        }
-        @objc func tapped() { KeyboardDismissSupport.dismiss() }
-        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-            var view = touch.view
-            while let current = view {
-                if current is UITextField || current is UITextView || current is UIControl { return false }
-                // UIKit's own keyboard must keep receiving digit and delete taps.
-                let name = String(describing: type(of: current))
-                if name.contains("Keyboard") || name.contains("InputSet") { return false }
-                view = current.superview
-            }
-            return true
-        }
-        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool { true }
-    }
-    func makeCoordinator() -> Coordinator { Coordinator() }
-    func makeUIView(context: Context) -> Anchor {
-        let view = Anchor(); view.isUserInteractionEnabled = false
-        view.attach = { [weak coordinator = context.coordinator] window in coordinator?.attach(window) }
-        return view
-    }
-    func updateUIView(_ view: Anchor, context: Context) { context.coordinator.attach(view.window) }
-    static func dismantleUIView(_ view: Anchor, coordinator: Coordinator) { coordinator.attach(nil) }
 }
 
 // MARK: - Shared registration lookup and photos
@@ -6332,139 +6057,6 @@ struct AircraftGallery: View {
 
 // MARK: - App shell
 
-enum MainTab: Int, CaseIterable {
-    case logbook, aircraft, totals, stats, calendar
-    var title: String { ["Logbook", "Aircraft", "Totals", "Stats", "Calendar"][rawValue] }
-    var icon: String { ["book", "airplane", "list.bullet", "chart.bar", "calendar"][rawValue] }
-}
-
-struct PrototypeTabIcon: Shape {
-    let tab: MainTab
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: rect.minX + x / 24 * rect.width, y: rect.minY + y / 24 * rect.height)
-        }
-        func line(_ points: [(CGFloat, CGFloat)], closed: Bool = false) {
-            guard let first = points.first else { return }
-            p.move(to: point(first.0, first.1))
-            for item in points.dropFirst() { p.addLine(to: point(item.0, item.1)) }
-            if closed { p.closeSubpath() }
-        }
-        switch tab {
-        case .logbook:
-            p.move(to: point(12, 5)); p.addQuadCurve(to: point(2, 3), control: point(6, 1))
-            line([(2, 3), (2, 20)])
-            p.addQuadCurve(to: point(12, 22), control: point(7, 18))
-            p.addQuadCurve(to: point(22, 20), control: point(17, 18))
-            p.addLine(to: point(22, 3)); p.addQuadCurve(to: point(12, 5), control: point(18, 1))
-            line([(12, 5), (12, 22)])
-        case .aircraft:
-            // Top view, nose upward, as in the prototype.
-            line([(12, 1), (12, 23)])
-            line([(9.5, 4), (12, 1), (14.5, 4)])
-            line([(12, 8), (3, 11), (3, 14), (12, 11), (21, 14), (21, 11)], closed: true)
-            line([(12, 18.5), (7, 23), (17, 23)], closed: true)
-        case .totals:
-            for y in [CGFloat(5), 12, 19] {
-                p.addEllipse(in: CGRect(x: point(2, y - 1.4).x, y: point(2, y - 1.4).y,
-                                       width: rect.width * 2.8 / 24, height: rect.height * 2.8 / 24))
-                line([(9, y), (22, y)])
-            }
-        case .stats:
-            line([(2, 2), (2, 22), (23, 22)])
-            line([(7, 18), (7, 14)]); line([(13, 18), (13, 8)])
-            line([(19, 18), (19, 3)])
-        case .calendar:
-            p.addRoundedRect(in: CGRect(x: point(2, 5).x, y: point(2, 5).y,
-                width: rect.width * 20 / 24, height: rect.height * 17 / 24), cornerSize: CGSize(width: 3, height: 3))
-            line([(2, 10), (22, 10)]); line([(7, 2), (7, 7)]); line([(17, 2), (17, 7)])
-            for y in [CGFloat(14), 18] { for x in [CGFloat(7), 12, 17] {
-                p.addEllipse(in: CGRect(x: point(x - 0.6, y - 0.6).x, y: point(x - 0.6, y - 0.6).y,
-                    width: rect.width * 1.2 / 24, height: rect.height * 1.2 / 24))
-            } }
-        }
-        return p
-    }
-}
-
-struct ContentView: View {
-    @StateObject private var store = FlightStore()
-    @StateObject private var theme = AppTheme()
-    @StateObject private var photos = AircraftPhotos()
-    @StateObject private var airports = AirportCatalog()
-    @State private var tab: MainTab = .logbook
-    @State private var more = false
-    @State private var adding = false
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            Group {
-                if more { MoreScreen(onImportFinished: { more = false; tab = .logbook }) }
-                else {
-                    switch tab {
-                    case .logbook: LogbookScreen()
-                    case .aircraft: AircraftScreen()
-                    case .totals: TotalsScreen()
-                    case .stats: StatsScreen()
-                    case .calendar: CalendarScreen()
-                    }
-                }
-            }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            tabBar
-        }.background(theme.background.ignoresSafeArea()).foregroundStyle(theme.text)
-            .environmentObject(store).environmentObject(theme).environmentObject(photos).environmentObject(airports)
-            .preferredColorScheme(theme.dark ? .dark : .light).tint(theme.accent)
-            .sheet(isPresented: $adding) {
-                FlightEditor()
-                    .environmentObject(store)
-                    .environmentObject(theme)
-                    .environmentObject(photos)
-                    .environmentObject(airports)
-            }
-            .alert(AppBrand.name, isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
-                Button("OK", role: .cancel) { store.errorMessage = nil }
-            } message: { Text(store.errorMessage ?? "") }
-    }
-    private var header: some View {
-        HStack {
-            Button { more.toggle() } label: {
-                Image(systemName: more ? "xmark" : "line.3.horizontal")
-                    .font(.system(size: 21, weight: .semibold)).frame(width: 44, height: 44)
-                    .background(theme.surface).clipShape(Circle())
-                    .overlay(Circle().stroke(theme.line, lineWidth: 1))
-            }.accessibilityLabel(more ? "Close More" : "Open More")
-            Spacer()
-            Text(more ? "More" : tab.title).font(.system(size: 25, weight: .heavy, design: .rounded))
-            Spacer()
-            Button { adding = true } label: {
-                Image(systemName: "plus").font(.system(size: 29, weight: .regular))
-                    .foregroundStyle(Color(hex: 0x15202A)).frame(width: 46, height: 46)
-                    .background(theme.accent).clipShape(Circle())
-            }.accessibilityLabel("Add flight")
-        }.buttonStyle(.plain).padding(.horizontal, 18).padding(.vertical, 16)
-            .background(theme.background).overlay(alignment: .bottom) { Rectangle().fill(theme.line).frame(height: 1) }
-    }
-    private var tabBar: some View {
-        HStack(spacing: 3) {
-            ForEach(MainTab.allCases, id: \.rawValue) { item in
-                Button { more = false; tab = item } label: {
-                    VStack(spacing: 7) {
-                        PrototypeTabIcon(tab: item).stroke(style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
-                            .frame(width: 25, height: 25).accessibilityHidden(true)
-                        Text(item.title).font(.system(size: 11, weight: .medium))
-                    }.frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .foregroundStyle(!more && tab == item ? theme.accent : theme.muted)
-                        .background(!more && tab == item ? theme.accent.opacity(0.13) : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 21))
-                }
-            }
-        }.buttonStyle(.plain).padding(.horizontal, 8).padding(.top, 8).padding(.bottom, 2)
-            .background(theme.surface.ignoresSafeArea(edges: .bottom))
-            .overlay(alignment: .top) { Rectangle().fill(theme.line).frame(height: 1) }
-    }
-}
-
 struct SessionPhoto: View {
     @EnvironmentObject var theme: AppTheme
     let flight: Flight
@@ -6649,14 +6241,6 @@ struct LogbookScreen: View {
                 }
             }
         }
-    }
-}
-
-struct SegmentButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.system(size: 18, weight: .heavy, design: .rounded))
-            .frame(maxWidth: .infinity).frame(height: 52).contentShape(Rectangle())
-            .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
 
@@ -6981,27 +6565,6 @@ struct CurrencyScreen: View {
 }
 
 // MARK: - Add and edit flights
-
-struct LogField: View {
-    @EnvironmentObject var theme: AppTheme
-    @Environment(\.scanReviewPresentation) var review
-    var title: String
-    @Binding var value: String
-    var hint = ""
-    var keyboard: UIKeyboardType = .default
-    private var reviewKey: String? { ScanReviewFields.key(title) }
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if !review.isTracked(reviewKey) { Text(title).font(.system(size: 14)).foregroundStyle(theme.muted) }
-            TextField(hint, text: Binding(get: { value }, set: { value = $0; if let key = ScanReviewFields.key(title) { review.edited?(key) } }), axis: reviewKey == "notes" ? .vertical : .horizontal)
-                .lineLimit(reviewKey == "notes" ? 1...6 : 1...1)
-                .keyboardType(keyboard).autocorrectionDisabled()
-                .padding(14).background(review.needsReview(reviewKey) ? ScanReviewColors.warning(theme.dark).opacity(theme.dark ? 0.10 : 0.07) : theme.raised)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(review.needsReview(reviewKey) ? ScanReviewColors.warning(theme.dark).opacity(0.55) : theme.line))
-        }.frame(maxWidth: .infinity, alignment: .leading).scanField(reviewKey, label: title)
-    }
-}
 
 // MARK: - Instructor signing
 
@@ -11694,7 +11257,6 @@ struct ShareImage: Identifiable { let id = UUID(); let image: UIImage }
     }
 }
 
-
 struct SimulatorEditor: View {
     @EnvironmentObject var store: FlightStore
     @EnvironmentObject var theme: AppTheme
@@ -13092,7 +12654,6 @@ struct ExperienceFlightsView: View {
         }.sheet(item: $selected) { FlightDetail(flightID: $0.id) }
     }
 }
-
 
 enum ProgressMetric {
     static let fields: [(key: String, title: String)] = [
@@ -18404,7 +17965,6 @@ struct TrainingPathPicker: View {
     }
 }
 
-
 nonisolated enum FlightReviewRules {
     static func endExclusive(_ date: Date, calendar: Calendar = .current) -> Date? {
         guard let month = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) else { return nil }
@@ -18809,7 +18369,6 @@ struct FlightReviewCard: View {
         }
     }
 }
-
 
 // MARK: - Airport lookup, route map, and memories
 
@@ -20736,7 +20295,6 @@ struct FlightStoryView: View {
     }
 }
 
-
 // MARK: - More, OCR review, CSV and PDF exports
 
 struct ShareFile: Identifiable { let url: URL; var id: String { url.absoluteString } }
@@ -21622,7 +21180,6 @@ struct ImportFailureList: View {
     }
 }
 
-
 struct MoreScreen: View {
     @EnvironmentObject var store: FlightStore
     @EnvironmentObject var theme: AppTheme
@@ -22221,7 +21778,6 @@ struct AIPhotoResult: Decodable {
         }.onDisappear { connectionTask?.cancel() }
     }
 }
-
 
 // MARK: - Structured photo imports
 
@@ -23893,7 +23449,6 @@ struct GuidedDocumentCamera: UIViewControllerRepresentable {
         return ScanReviewContext(title: "Review \(schedule ? "booking" : "flight") \(index + 1) of \(drafts.count)", sourceText: draft.sourceText, image: image, warnings: warnings, unresolvedFields: draft.unresolvedFields, issues: draft.issues, rowImage: rowImage)
     }
 }
-
 
 struct LogbookPrintColumn {
     var title: String
