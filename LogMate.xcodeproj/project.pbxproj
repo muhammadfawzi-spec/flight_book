@@ -15,9 +15,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			explicitFileTypes = {
 			};
-			fallbackPath = LogMate;
-			name = LogMate;
-			permission = 755;
+			path = LogMate;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
